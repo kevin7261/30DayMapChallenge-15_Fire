@@ -44,7 +44,7 @@
 
       // 🔥 熱力圖配置
       const heatmapConfig = ref({
-        radius: 25, // 熱力圖半徑（像素）
+        radius: 20, // 熱力圖半徑（像素）
         maxZoom: 18,
         max: 1.0,
         minOpacity: 0.4,
@@ -260,12 +260,12 @@
           const [lng, lat] = location.geometry.coordinates;
           const properties = location.properties;
 
-          // 創建地點標記
+          // 創建地點標記 - 小紅圓
           const locationIcon = L.divIcon({
             className: 'location-marker',
-            html: '<div class="location-marker-icon">📍</div>',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10],
+            html: '<div class="location-marker-icon"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
           });
 
           const marker = L.marker([lat, lng], { icon: locationIcon });
