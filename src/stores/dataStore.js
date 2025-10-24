@@ -40,7 +40,7 @@ export const useDataStore = defineStore(
 
       try {
         console.log('📍 開始載入 JSON 文件...');
-        const response = await fetch('/data/已儲存的地點.json');
+        const response = await fetch('/30DayMapChallenge-15_Fire/data/已儲存的地點.json');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -49,7 +49,7 @@ export const useDataStore = defineStore(
         console.log(`📍 成功載入 ${savedLocations.value.length} 個儲存的地點`);
       } catch (err) {
         error.value = err.message;
-        // console.error('❌ 載入儲存的地點數據失敗:', err);
+        console.error('❌ 載入儲存的地點數據失敗:', err);
       } finally {
         loading.value = false;
       }

@@ -57,8 +57,8 @@
           mapInstance = L.map(mapContainer.value, {
             center: defineStore.mapView.center,
             zoom: defineStore.mapView.zoom,
-            zoomControl: true, // 啟用縮放控制
-            attributionControl: true, // 啟用屬性控制
+            zoomControl: false, // 禁用縮放控制
+            attributionControl: false, // 禁用屬性控制
             dragging: true, // 啟用拖拽
             touchZoom: true, // 啟用觸控縮放
             doubleClickZoom: true, // 啟用雙擊縮放
@@ -141,8 +141,10 @@
       const loadSavedLocations = async () => {
         try {
           console.log('📍 開始載入儲存的地點...');
+          console.log('📍 當前 dataStore:', dataStore);
           await dataStore.loadSavedLocations();
           console.log('📍 儲存的地點載入完成，數量:', dataStore.savedLocations.length);
+          console.log('📍 前3個地點:', dataStore.savedLocations.slice(0, 3));
           displaySavedLocations();
         } catch (error) {
           console.error('❌ 載入儲存的地點失敗:', error);
