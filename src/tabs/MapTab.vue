@@ -19,6 +19,7 @@
   import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  import 'leaflet.heat';
   import { useDataStore } from '@/stores/dataStore.js';
   import { useDefineStore } from '@/stores/defineStore.js';
 
@@ -40,6 +41,21 @@
 
       // 🎛️ 顯示模式控制
       const displayMode = ref('heatmap'); // 'point' 或 'heatmap'
+
+      // 🔥 熱力圖配置
+      const heatmapConfig = ref({
+        radius: 25, // 熱力圖半徑（像素）
+        maxZoom: 18,
+        max: 1.0,
+        minOpacity: 0.4,
+        blur: 15,
+        gradient: {
+          0.4: 'red',
+          0.6: 'orange',
+          0.8: 'yellow',
+          1.0: 'green',
+        },
+      });
 
       // 🎛️ 地圖控制狀態
       const isMapReady = ref(false);
@@ -161,7 +177,22 @@
               color: '#333333',
               fillOpacity: 0.8,
             },
-          }).addTo(mapInstance);
+          });
+
+          // 先添加到地圖
+          worldMapLayer.addTo(mapInstance);
+
+          // 使用多種方法確保世界地圖在最底層
+          setTimeout(() => {
+            if (worldMapLayer) {
+              worldMapLayer.bringToBack();
+              // 強制設置 z-index
+              const worldMapElement = worldMapLayer.getElement();
+              if (worldMapElement) {
+                worldMapElement.style.zIndex = '1';
+              }
+            }
+          }, 100);
 
           console.log('🌍 世界地圖載入完成');
         } catch (error) {
@@ -253,6 +284,19 @@
         });
 
         mapInstance.addLayer(savedMarkersLayer);
+
+        // 確保世界地圖在最底層
+        setTimeout(() => {
+          if (worldMapLayer) {
+            worldMapLayer.bringToBack();
+            // 強制設置 z-index
+            const worldMapElement = worldMapLayer.getElement();
+            if (worldMapElement) {
+              worldMapElement.style.zIndex = '1';
+            }
+          }
+        }, 50);
+
         console.log(`📍 已在地圖上顯示 ${dataStore.savedLocations.length} 個點位`);
       };
 
@@ -260,82 +304,37 @@
        * 🔥 顯示熱力圖
        */
       const displayHeatmap = () => {
-        // 創建熱力圖圖層組
-        heatmapInstance = L.layerGroup();
+        // 移除現有熱力圖
+        if (heatmapInstance) {
+          mapInstance.removeLayer(heatmapInstance);
+        }
 
-        // 為每個儲存的地點創建熱力圖圓圈
-        dataStore.savedLocations.forEach((location, index) => {
+        // 準備熱力圖數據
+        const heatData = dataStore.savedLocations.map((location, index) => {
           const [lng, lat] = location.geometry.coordinates;
-          const properties = location.properties;
-
-          // 創建彩色漸層效果
+          // 計算強度值（0-1之間）
           const intensity = Math.min(1, (index + 1) / dataStore.savedLocations.length);
-          let color;
-
-          if (intensity < 0.2) {
-            // 藍色到青色
-            const factor = intensity / 0.2;
-            const red = Math.floor(0);
-            const green = Math.floor(100 + 155 * factor);
-            const blue = Math.floor(255);
-            color = `rgb(${red}, ${green}, ${blue})`;
-          } else if (intensity < 0.4) {
-            // 青色到綠色
-            const factor = (intensity - 0.2) / 0.2;
-            const red = Math.floor(0);
-            const green = Math.floor(255);
-            const blue = Math.floor(255 - 255 * factor);
-            color = `rgb(${red}, ${green}, ${blue})`;
-          } else if (intensity < 0.6) {
-            // 綠色到黃色
-            const factor = (intensity - 0.4) / 0.2;
-            const red = Math.floor(255 * factor);
-            const green = Math.floor(255);
-            const blue = Math.floor(0);
-            color = `rgb(${red}, ${green}, ${blue})`;
-          } else if (intensity < 0.8) {
-            // 黃色到橙色
-            const factor = (intensity - 0.6) / 0.2;
-            const red = Math.floor(255);
-            const green = Math.floor(255 - 100 * factor);
-            const blue = Math.floor(0);
-            color = `rgb(${red}, ${green}, ${blue})`;
-          } else {
-            // 橙色到紅色
-            const factor = (intensity - 0.8) / 0.2;
-            const red = Math.floor(255);
-            const green = Math.floor(155 - 155 * factor);
-            const blue = Math.floor(0);
-            color = `rgb(${red}, ${green}, ${blue})`;
-          }
-
-          // 創建熱力圖圓圈
-          const heatCircle = L.circle([lat, lng], {
-            radius: 3000, // 3公里半徑
-            fillColor: color,
-            color: color,
-            weight: 2,
-            opacity: 0.4,
-            fillOpacity: 0.15,
-            className: 'heatmap-circle',
-          });
-
-          // 創建彈出窗口內容
-          const popupContent = `
-            <div class="location-popup">
-              <h6 class="mb-2">${properties.location?.name || '未知地點'}</h6>
-              <p class="mb-1"><strong>地址:</strong> ${properties.location?.address || '無地址資訊'}</p>
-              <p class="mb-1"><strong>國家:</strong> ${properties.location?.country_code || 'Unknown'}</p>
-              <p class="mb-1"><strong>日期:</strong> ${new Date(properties.date).toLocaleDateString()}</p>
-              ${properties.google_maps_url ? `<a href="${properties.google_maps_url}" target="_blank" class="btn btn-sm btn-primary">查看 Google 地圖</a>` : ''}
-            </div>
-          `;
-
-          heatCircle.bindPopup(popupContent);
-          heatmapInstance.addLayer(heatCircle);
+          return [lat, lng, intensity];
         });
 
+        // 創建熱力圖圖層
+        heatmapInstance = L.heatLayer(heatData, heatmapConfig.value);
+
+        // 添加到地圖
         mapInstance.addLayer(heatmapInstance);
+
+        // 確保世界地圖在最底層
+        setTimeout(() => {
+          if (worldMapLayer) {
+            worldMapLayer.bringToBack();
+            // 強制設置 z-index
+            const worldMapElement = worldMapLayer.getElement();
+            if (worldMapElement) {
+              worldMapElement.style.zIndex = '1';
+            }
+          }
+        }, 50);
+
         console.log(`🔥 已在地圖上顯示 ${dataStore.savedLocations.length} 個地點的熱力圖`);
       };
 
