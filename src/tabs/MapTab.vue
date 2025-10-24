@@ -35,6 +35,7 @@
       let mapInstance = null;
       let currentTileLayer = null;
       let savedMarkersLayer = null;
+      let worldMapLayer = null;
 
       // 🎛️ 地圖控制狀態
       const isMapReady = ref(false);
@@ -132,6 +133,44 @@
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
           });
           mapInstance.addLayer(currentTileLayer);
+        }
+      };
+
+      /**
+       * 🌍 載入世界地圖
+       */
+      const loadWorldMap = async () => {
+        try {
+          console.log('🌍 開始載入世界地圖...');
+          const response = await fetch(
+            '/30DayMapChallenge-15_Fire/data/ne_110m_admin_0_countries.geojson'
+          );
+          if (!response.ok) {
+            console.warn('⚠️ 世界地圖文件不存在，跳過載入');
+            return;
+          }
+          const worldData = await response.json();
+
+          // 移除現有的世界地圖
+          if (worldMapLayer) {
+            mapInstance.removeLayer(worldMapLayer);
+          }
+
+          // 創建世界地圖圖層
+          worldMapLayer = L.geoJSON(worldData, {
+            style: {
+              fillColor: '#f8f9fa',
+              weight: 1,
+              opacity: 1,
+              color: '#dee2e6',
+              dashArray: '3',
+              fillOpacity: 0.3,
+            },
+          }).addTo(mapInstance);
+
+          console.log('🌍 世界地圖載入完成');
+        } catch (error) {
+          console.warn('⚠️ 載入世界地圖失敗，繼續載入儲存的地點:', error);
         }
       };
 
@@ -242,9 +281,10 @@
           if (createMap()) {
             console.log('[MapTab] 地圖創建成功，開始初始化');
             setBasemap();
-            // 延遲載入儲存的地點，確保地圖完全準備好
-            setTimeout(() => {
-              loadSavedLocations();
+            // 延遲載入世界地圖和儲存的地點，確保地圖完全準備好
+            setTimeout(async () => {
+              await loadWorldMap();
+              await loadSavedLocations();
             }, 500);
           } else {
             console.log('[MapTab] 地圖創建失敗，100ms 後重試');
@@ -302,6 +342,7 @@
 
         currentTileLayer = null;
         savedMarkersLayer = null;
+        worldMapLayer = null;
         isMapReady.value = false;
       });
 
