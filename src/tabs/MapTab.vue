@@ -36,6 +36,10 @@
       let currentTileLayer = null;
       let savedMarkersLayer = null;
       let worldMapLayer = null;
+      let heatmapInstance = null;
+
+      // 🎛️ 顯示模式控制
+      const displayMode = ref('heatmap'); // 'point' 或 'heatmap'
 
       // 🎛️ 地圖控制狀態
       const isMapReady = ref(false);
@@ -113,7 +117,7 @@
 
       /**
        * 🎨 設定底圖
-       * 根據存儲中的設定載入對應的底圖圖層
+       * 不使用任何底圖，只顯示世界地圖邊界和熱力圖
        */
       const setBasemap = () => {
         if (!mapInstance) return;
@@ -121,19 +125,11 @@
         // 移除現有底圖
         if (currentTileLayer) {
           mapInstance.removeLayer(currentTileLayer);
+          currentTileLayer = null;
         }
 
-        const config = defineStore.basemaps.find((b) => b.value === defineStore.selectedBasemap);
-
-        // 添加底圖圖層
-        if (config && config.url) {
-          currentTileLayer = L.tileLayer(config.url, {
-            attribution: '© Google',
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-          });
-          mapInstance.addLayer(currentTileLayer);
-        }
+        // 不添加任何底圖，只使用世界地圖邊界作為背景
+        console.log('🗺️ 不使用底圖，只顯示世界地圖邊界和熱力圖');
       };
 
       /**
@@ -156,15 +152,14 @@
             mapInstance.removeLayer(worldMapLayer);
           }
 
-          // 創建世界地圖圖層
+          // 創建世界地圖圖層作為主要背景
           worldMapLayer = L.geoJSON(worldData, {
             style: {
-              fillColor: '#f8f9fa',
-              weight: 1,
+              fillColor: '#ffffff',
+              weight: 2,
               opacity: 1,
-              color: '#dee2e6',
-              dashArray: '3',
-              fillOpacity: 0.3,
+              color: '#333333',
+              fillOpacity: 0.8,
             },
           }).addTo(mapInstance);
 
@@ -191,11 +186,13 @@
       };
 
       /**
-       * 🗺️ 在地圖上顯示儲存的地點
+       * 🔥 在地圖上顯示儲存的地點
        */
       const displaySavedLocations = () => {
         console.log(
-          '🗺️ 嘗試顯示儲存的地點，地圖實例:',
+          '🔥 嘗試顯示儲存的地點，模式:',
+          displayMode.value,
+          '地圖實例:',
           !!mapInstance,
           '地點數量:',
           dataStore.savedLocations.length
@@ -205,15 +202,27 @@
           return;
         }
 
-        // 移除現有的標記
+        // 清除現有圖層
         if (savedMarkersLayer) {
           mapInstance.removeLayer(savedMarkersLayer);
         }
+        if (heatmapInstance) {
+          mapInstance.removeLayer(heatmapInstance);
+        }
 
-        // 創建新的標記圖層
+        if (displayMode.value === 'point') {
+          displayPoints();
+        } else {
+          displayHeatmap();
+        }
+      };
+
+      /**
+       * 📍 顯示點位
+       */
+      const displayPoints = () => {
         savedMarkersLayer = L.layerGroup();
 
-        // 為每個儲存的地點創建標記
         dataStore.savedLocations.forEach((location) => {
           const [lng, lat] = location.geometry.coordinates;
           const properties = location.properties;
@@ -243,10 +252,99 @@
           savedMarkersLayer.addLayer(marker);
         });
 
-        // 將標記圖層添加到地圖
         mapInstance.addLayer(savedMarkersLayer);
+        console.log(`📍 已在地圖上顯示 ${dataStore.savedLocations.length} 個點位`);
+      };
 
-        console.log(`📍 已在地圖上顯示 ${dataStore.savedLocations.length} 個儲存的地點`);
+      /**
+       * 🔥 顯示熱力圖
+       */
+      const displayHeatmap = () => {
+        // 創建熱力圖圖層組
+        heatmapInstance = L.layerGroup();
+
+        // 為每個儲存的地點創建熱力圖圓圈
+        dataStore.savedLocations.forEach((location, index) => {
+          const [lng, lat] = location.geometry.coordinates;
+          const properties = location.properties;
+
+          // 創建彩色漸層效果
+          const intensity = Math.min(1, (index + 1) / dataStore.savedLocations.length);
+          let color;
+
+          if (intensity < 0.2) {
+            // 藍色到青色
+            const factor = intensity / 0.2;
+            const red = Math.floor(0);
+            const green = Math.floor(100 + 155 * factor);
+            const blue = Math.floor(255);
+            color = `rgb(${red}, ${green}, ${blue})`;
+          } else if (intensity < 0.4) {
+            // 青色到綠色
+            const factor = (intensity - 0.2) / 0.2;
+            const red = Math.floor(0);
+            const green = Math.floor(255);
+            const blue = Math.floor(255 - 255 * factor);
+            color = `rgb(${red}, ${green}, ${blue})`;
+          } else if (intensity < 0.6) {
+            // 綠色到黃色
+            const factor = (intensity - 0.4) / 0.2;
+            const red = Math.floor(255 * factor);
+            const green = Math.floor(255);
+            const blue = Math.floor(0);
+            color = `rgb(${red}, ${green}, ${blue})`;
+          } else if (intensity < 0.8) {
+            // 黃色到橙色
+            const factor = (intensity - 0.6) / 0.2;
+            const red = Math.floor(255);
+            const green = Math.floor(255 - 100 * factor);
+            const blue = Math.floor(0);
+            color = `rgb(${red}, ${green}, ${blue})`;
+          } else {
+            // 橙色到紅色
+            const factor = (intensity - 0.8) / 0.2;
+            const red = Math.floor(255);
+            const green = Math.floor(155 - 155 * factor);
+            const blue = Math.floor(0);
+            color = `rgb(${red}, ${green}, ${blue})`;
+          }
+
+          // 創建熱力圖圓圈
+          const heatCircle = L.circle([lat, lng], {
+            radius: 3000, // 3公里半徑
+            fillColor: color,
+            color: color,
+            weight: 2,
+            opacity: 0.4,
+            fillOpacity: 0.15,
+            className: 'heatmap-circle',
+          });
+
+          // 創建彈出窗口內容
+          const popupContent = `
+            <div class="location-popup">
+              <h6 class="mb-2">${properties.location?.name || '未知地點'}</h6>
+              <p class="mb-1"><strong>地址:</strong> ${properties.location?.address || '無地址資訊'}</p>
+              <p class="mb-1"><strong>國家:</strong> ${properties.location?.country_code || 'Unknown'}</p>
+              <p class="mb-1"><strong>日期:</strong> ${new Date(properties.date).toLocaleDateString()}</p>
+              ${properties.google_maps_url ? `<a href="${properties.google_maps_url}" target="_blank" class="btn btn-sm btn-primary">查看 Google 地圖</a>` : ''}
+            </div>
+          `;
+
+          heatCircle.bindPopup(popupContent);
+          heatmapInstance.addLayer(heatCircle);
+        });
+
+        mapInstance.addLayer(heatmapInstance);
+        console.log(`🔥 已在地圖上顯示 ${dataStore.savedLocations.length} 個地點的熱力圖`);
+      };
+
+      /**
+       * 🔄 切換顯示模式
+       */
+      const toggleDisplayMode = (mode) => {
+        displayMode.value = mode;
+        displaySavedLocations();
       };
 
       /**
@@ -343,6 +441,7 @@
         currentTileLayer = null;
         savedMarkersLayer = null;
         worldMapLayer = null;
+        heatmapInstance = null;
         isMapReady.value = false;
       });
 
@@ -366,6 +465,8 @@
         invalidateSize,
         defineStore,
         dataStore,
+        displayMode,
+        toggleDisplayMode,
       };
     },
   };
@@ -374,6 +475,36 @@
 <template>
   <!-- 🗺️ 地圖主容器 -->
   <div id="map-container" class="h-100 w-100 position-relative bg-transparent z-0">
+    <!-- 🎛️ 左側中間控制面板 -->
+    <div
+      class="position-absolute"
+      style="top: 50%; left: 0; transform: translateY(-50%); z-index: 1000; padding: 1rem"
+    >
+      <div class="bg-dark bg-opacity-75 rounded-3 p-3">
+        <!-- 🎛️ 顯示模式選擇區域 -->
+        <div class="">
+          <div class="d-flex flex-column gap-1">
+            <button
+              type="button"
+              class="btn border-0 my-country-btn my-font-sm-white px-4 py-3"
+              :class="[displayMode === 'point' ? 'active' : '']"
+              @click="toggleDisplayMode('point')"
+            >
+              POINT
+            </button>
+            <button
+              type="button"
+              class="btn border-0 my-country-btn my-font-sm-white px-4 py-3"
+              :class="[displayMode === 'heatmap' ? 'active' : '']"
+              @click="toggleDisplayMode('heatmap')"
+            >
+              HEATMAP
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 🗺️ Leaflet 地圖容器 -->
     <div :id="mapContainerId" ref="mapContainer" class="h-100 w-100"></div>
   </div>
@@ -381,6 +512,56 @@
 
 <style>
   @import '../assets/css/common.css';
+
+  /* 🔥 熱力圖樣式 */
+  .heatmap-circle {
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    filter: blur(1px);
+    transition: all 0.3s ease;
+  }
+
+  .heatmap-circle:hover {
+    filter: blur(0px);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    transform: scale(1.05);
+  }
+
+  /* 📍 點位標記樣式 */
+  .location-marker {
+    background: transparent;
+    border: none;
+  }
+
+  .location-marker-icon {
+    font-size: 20px;
+    text-align: center;
+    line-height: 20px;
+  }
+
+  /* 📍 彈出窗口樣式 */
+  .location-popup {
+    min-width: 200px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .location-popup h6 {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .location-popup p {
+    margin-bottom: 4px;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .location-popup .btn {
+    margin-top: 8px;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
 
   /* 📍 地點標記樣式 */
   .location-marker {
