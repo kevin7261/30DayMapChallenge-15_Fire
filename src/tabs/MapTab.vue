@@ -186,7 +186,7 @@
             pane: 'worldPane', // 使用最底層的 pane
             style: {
               fillColor: '#ffffff',
-              weight: 2,
+              weight: 1,
               opacity: 1,
               color: '#333333',
               fillOpacity: 0.8,
@@ -507,16 +507,19 @@
     transform: scale(1.05);
   }
 
-  /* 📍 點位標記樣式 */
+  /* 📍 點位標記樣式 - 小紅圓 */
   .location-marker {
     background: transparent;
     border: none;
   }
 
   .location-marker-icon {
-    font-size: 20px;
-    text-align: center;
-    line-height: 20px;
+    width: 12px;
+    height: 12px;
+    background-color: #ff0000;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
   /* 📍 彈出窗口樣式 */
@@ -541,19 +544,6 @@
     margin-top: 8px;
     font-size: 12px;
     padding: 4px 8px;
-  }
-
-  /* 📍 地點標記樣式 */
-  .location-marker {
-    background: transparent;
-    border: none;
-  }
-
-  .location-marker-icon {
-    font-size: 16px;
-    text-align: center;
-    line-height: 20px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   }
 
   /* 📍 彈出窗口樣式 */
