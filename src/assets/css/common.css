@@ -1,0 +1,202 @@
+/* =============================================================================
+   📦 引入依賴 (Dependencies Import)
+   ============================================================================= */
+
+@import "./variables.css"; /* 基礎變數定義 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+
+/* =============================================================================
+   🔧 基礎重置和全局設定 (Base Reset & Global Settings)
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--my-font-family-primary); /* 使用主要字體 */
+  font-size: var(--my-font-size-md); /* 基礎字體大小 */
+  font-weight: var(--my-font-weight-md);
+  letter-spacing: var(--my-letter-spacing);
+  color: var(--my-color-gray-900); /* 主要文字顏色 */
+  background-color: var(--my-color-white); /* 主要背景顏色 */
+}
+
+/* 應用程式佈局 (Application Layout)  */
+
+#app {
+  height: 100vh;
+}
+
+/* 字體大小 */
+
+.my-font-size-sm {
+  font-size: var(--my-font-size-sm);
+}
+.my-font-size-lg {
+  font-size: var(--my-font-size-lg);
+}
+
+/* 圖層顏色類別 */
+.my-color-white {
+  color: var(--my-color-white);
+}
+.my-color-gray-50 {
+  color: var(--my-color-gray-50);
+}
+.my-color-gray-100 {
+  color: var(--my-color-gray-100);
+}
+.my-color-gray-200 {
+  color: var(--my-color-gray-200);
+}
+.my-color-gray-300 {
+  color: var(--my-color-gray-300);
+}
+.my-color-gray-400 {
+  color: var(--my-color-gray-400);
+}
+.my-color-gray-500 {
+  color: var(--my-color-gray-500);
+}
+.my-color-gray-600 {
+  color: var(--my-color-gray-600);
+}
+.my-color-gray-700 {
+  color: var(--my-color-gray-700);
+}
+.my-color-gray-800 {
+  color: var(--my-color-gray-800);
+}
+.my-color-gray-900 {
+  color: var(--my-color-gray-900);
+}
+.my-color-black {
+  color: var(--my-color-black);
+}
+
+.my-bgcolor-white {
+  background-color: var(--my-color-white);
+}
+.my-bgcolor-black {
+  background-color: var(--my-color-black);
+}
+
+/* 文字間距 */
+
+.my-letter-spacing-lg {
+  letter-spacing: var(--my-letter-spacing-lg);
+}
+
+/* 文字顏色 */
+
+.my-font-sm-white {
+  font-size: var(--my-font-size-sm);
+  color: var(--my-color-white);
+  font-weight: var(--my-font-weight-lg);
+}
+
+.my-font-lg-white {
+  font-size: var(--my-font-size-lg);
+  color: var(--my-color-white);
+  font-weight: var(--my-font-weight-lg);
+}
+
+/* 按鈕模式 */
+
+.my-btn-transparent {
+  color: var(--my-color-black);
+}
+
+.my-btn-transparent:hover,
+.my-btn-transparent:active {
+  color: var(--my-color-black);
+  background-color: var(--my-color-white);
+}
+
+.my-btn-white {
+  color: var(--my-color-black);
+  background-color: var(--my-color-white);
+}
+
+.my-btn-white:hover,
+.my-btn-white:active {
+  background-color: var(--my-color-gray-100);
+}
+
+/* =============================================================================
+   🗺️ 底圖背景顏色類別 (Basemap Background Color Classes)
+   ============================================================================= */
+
+.my-map-bg-transparent {
+  background-color: transparent !important;
+}
+
+/* =============================================================================
+   🏙️ 國家按鈕顏色樣式 (Country Button Color Styles)
+   ============================================================================= */
+
+/* 國家按鈕基礎樣式 */
+.my-country-btn {
+  background-color: transparent !important;
+  color: var(--my-color-white) !important;
+  letter-spacing: var(--my-letter-spacing) !important;
+  font-weight: 500 !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+/* 覆蓋 Bootstrap 按鈕樣式 */
+.my-country-btn.btn {
+  color: var(--my-color-white) !important;
+  background-color: transparent !important;
+}
+
+/* 國家按鈕懸停效果 */
+.my-country-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 國家按鈕活躍狀態 */
+.my-country-btn.active {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* =============================================================================
+   🗺️ 底圖切換按鈕樣式 (Basemap Toggle Button Styles)
+   ============================================================================= */
+
+/* 底圖切換按鈕基礎樣式 */
+.my-basemap-toggle {
+  background-color: transparent !important;
+  border: 1px solid var(--my-color-white) !important;
+  color: var(--my-color-white) !important;
+}
+
+/* 底圖切換按鈕 - 地圖模式（活躍狀態） */
+.my-basemap-toggle-active {
+  background-color: var(--my-color-white) !important;
+  color: var(--my-color-black) !important;
+}
+
+/* 底圖切換按鈕 - 顏色模式（非活躍狀態） */
+.my-basemap-toggle-inactive {
+  background-color: transparent !important;
+  color: var(--my-color-white) !important;
+}
+
+/* 底圖切換按鈕懸停效果 */
+.my-basemap-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: var(--my-color-white) !important;
+}
