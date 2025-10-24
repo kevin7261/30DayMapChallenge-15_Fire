@@ -92,6 +92,19 @@
           mapInstance.on('zoomend', handleZoomEnd);
           mapInstance.on('moveend', handleMoveEnd);
 
+          // 創建自定義 pane 來控制圖層順序
+          // 世界地圖 pane (最底層)
+          const worldPane = mapInstance.createPane('worldPane');
+          worldPane.style.zIndex = 200; // 比預設的 overlayPane (400) 低
+
+          // 熱力圖 pane (中間層)
+          const heatmapPane = mapInstance.createPane('heatmapPane');
+          heatmapPane.style.zIndex = 400; // 和 overlayPane 同層級
+
+          // 標記 pane (最上層)
+          const markerPane = mapInstance.createPane('markerPane');
+          markerPane.style.zIndex = 600; // 比 overlayPane 高
+
           // 設定 popup 面板的 z-index
           mapInstance.getPane('popupPane').style.zIndex = 2200;
 
@@ -168,8 +181,9 @@
             mapInstance.removeLayer(worldMapLayer);
           }
 
-          // 創建世界地圖圖層作為主要背景
+          // 創建世界地圖圖層作為主要背景，使用自定義 pane
           worldMapLayer = L.geoJSON(worldData, {
+            pane: 'worldPane', // 使用最底層的 pane
             style: {
               fillColor: '#ffffff',
               weight: 2,
@@ -179,20 +193,8 @@
             },
           });
 
-          // 先添加到地圖
+          // 添加到地圖
           worldMapLayer.addTo(mapInstance);
-
-          // 使用多種方法確保世界地圖在最底層
-          setTimeout(() => {
-            if (worldMapLayer) {
-              worldMapLayer.bringToBack();
-              // 強制設置 z-index
-              const worldMapElement = worldMapLayer.getElement();
-              if (worldMapElement) {
-                worldMapElement.style.zIndex = '1';
-              }
-            }
-          }, 100);
 
           console.log('🌍 世界地圖載入完成');
         } catch (error) {
@@ -285,18 +287,6 @@
 
         mapInstance.addLayer(savedMarkersLayer);
 
-        // 確保世界地圖在最底層
-        setTimeout(() => {
-          if (worldMapLayer) {
-            worldMapLayer.bringToBack();
-            // 強制設置 z-index
-            const worldMapElement = worldMapLayer.getElement();
-            if (worldMapElement) {
-              worldMapElement.style.zIndex = '1';
-            }
-          }
-        }, 50);
-
         console.log(`📍 已在地圖上顯示 ${dataStore.savedLocations.length} 個點位`);
       };
 
@@ -317,23 +307,14 @@
           return [lat, lng, intensity];
         });
 
-        // 創建熱力圖圖層
-        heatmapInstance = L.heatLayer(heatData, heatmapConfig.value);
+        // 創建熱力圖圖層，並指定使用 heatmapPane
+        heatmapInstance = L.heatLayer(heatData, {
+          ...heatmapConfig.value,
+          pane: 'heatmapPane', // 使用中間層的 pane
+        });
 
         // 添加到地圖
         mapInstance.addLayer(heatmapInstance);
-
-        // 確保世界地圖在最底層
-        setTimeout(() => {
-          if (worldMapLayer) {
-            worldMapLayer.bringToBack();
-            // 強制設置 z-index
-            const worldMapElement = worldMapLayer.getElement();
-            if (worldMapElement) {
-              worldMapElement.style.zIndex = '1';
-            }
-          }
-        }, 50);
 
         console.log(`🔥 已在地圖上顯示 ${dataStore.savedLocations.length} 個地點的熱力圖`);
       };
