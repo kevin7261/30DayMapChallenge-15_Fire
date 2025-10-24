@@ -273,11 +273,34 @@
           // 創建彈出窗口內容
           const popupContent = `
             <div class="location-popup">
-              <h6 class="mb-2">${properties.location?.name || '未知地點'}</h6>
-              <p class="mb-1"><strong>地址:</strong> ${properties.location?.address || '無地址資訊'}</p>
-              <p class="mb-1"><strong>國家:</strong> ${properties.location?.country_code || 'Unknown'}</p>
-              <p class="mb-1"><strong>日期:</strong> ${new Date(properties.date).toLocaleDateString()}</p>
-              ${properties.google_maps_url ? `<a href="${properties.google_maps_url}" target="_blank" class="btn btn-sm btn-primary">查看 Google 地圖</a>` : ''}
+              <div class="popup-header">
+                <h6 class="popup-title">${properties.location?.name || '未知地點'}</h6>
+              </div>
+              <div class="popup-content">
+                <div class="popup-item">
+                  <span class="popup-label">地址</span>
+                  <span class="popup-value">${properties.location?.address || '無地址資訊'}</span>
+                </div>
+                <div class="popup-item">
+                  <span class="popup-label">國家</span>
+                  <span class="popup-value">${properties.location?.country_code || 'Unknown'}</span>
+                </div>
+                <div class="popup-item">
+                  <span class="popup-label">日期</span>
+                  <span class="popup-value">${new Date(properties.date).toLocaleDateString()}</span>
+                </div>
+                ${
+                  properties.google_maps_url
+                    ? `
+                  <div class="popup-actions">
+                    <a href="${properties.google_maps_url}" target="_blank" class="popup-btn">
+                      查看 Google 地圖
+                    </a>
+                  </div>
+                `
+                    : ''
+                }
+              </div>
             </div>
           `;
 
@@ -522,46 +545,96 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
-  /* 📍 彈出窗口樣式 */
+  /* 📍 彈出窗口樣式 - 美化版本 */
   .location-popup {
-    min-width: 200px;
+    min-width: 280px;
+    max-width: 320px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
   }
 
-  .location-popup h6 {
-    color: #333;
-    font-weight: 600;
-    margin-bottom: 8px;
+  .popup-header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+    color: white;
+    padding: 16px;
+    display: flex;
+    align-items: center;
   }
 
-  .location-popup p {
-    margin-bottom: 4px;
-    font-size: 14px;
-    color: #666;
+  .popup-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    flex: 1;
   }
 
-  .location-popup .btn {
-    margin-top: 8px;
+  .popup-content {
+    padding: 20px;
+    background: white;
+  }
+
+  .popup-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .popup-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  .popup-label {
     font-size: 12px;
-    padding: 4px 8px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
   }
 
-  /* 📍 彈出窗口樣式 */
-  .location-popup {
-    min-width: 200px;
+  .popup-value {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.4;
+    word-break: break-word;
   }
 
-  .location-popup h6 {
-    color: #007bff;
-    font-weight: bold;
+  .popup-actions {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
   }
 
-  .location-popup p {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
+  .popup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white !important;
+    text-decoration: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+    border: none;
+    cursor: pointer;
   }
 
-  .location-popup .btn {
-    margin-top: 0.5rem;
+  .popup-btn:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+    color: white !important;
+    text-decoration: none;
   }
 </style>
