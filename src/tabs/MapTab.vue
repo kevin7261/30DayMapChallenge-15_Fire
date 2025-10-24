@@ -335,28 +335,6 @@
   <div id="map-container" class="h-100 w-100 position-relative bg-transparent z-0">
     <!-- 🗺️ Leaflet 地圖容器 -->
     <div :id="mapContainerId" ref="mapContainer" class="h-100 w-100"></div>
-
-    <!-- 📊 統計資訊面板 -->
-    <div class="position-absolute top-0 end-0 m-3">
-      <div class="card shadow-sm" style="min-width: 200px">
-        <div class="card-body p-3">
-          <h6 class="card-title mb-2">📍 儲存的地點統計</h6>
-          <div v-if="dataStore.loading" class="text-muted">
-            <small>載入中...</small>
-          </div>
-          <div v-else-if="dataStore.error" class="text-danger">
-            <small>載入失敗: {{ dataStore.error }}</small>
-          </div>
-          <div v-else>
-            <p class="mb-1"><strong>總數:</strong> {{ dataStore.getStatistics.total }}</p>
-            <p class="mb-1"><strong>國家數:</strong> {{ dataStore.getStatistics.countries }}</p>
-            <p class="mb-0">
-              <strong>國家:</strong> {{ dataStore.getStatistics.countryList.join(', ') }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
