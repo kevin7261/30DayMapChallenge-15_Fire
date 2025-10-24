@@ -42,18 +42,26 @@
       // 🎛️ 顯示模式控制
       const displayMode = ref('heatmap'); // 'point' 或 'heatmap'
 
-      // 🔥 熱力圖配置
+      // 🔥 熱力圖配置 - 精緻火災風格
       const heatmapConfig = ref({
-        radius: 20, // 熱力圖半徑（像素）
+        radius: 12, // 熱力圖半徑（像素）- 更精緻的火焰擴散
         maxZoom: 18,
         max: 1.0,
-        minOpacity: 0.4,
-        blur: 15,
+        minOpacity: 0.9, // 極高透明度讓火焰更精緻
+        blur: 25, // 更糊的火焰邊緣模糊
         gradient: {
-          0.4: 'red',
-          0.6: 'orange',
-          0.8: 'yellow',
-          1.0: 'green',
+          0.0: 'black', // 黑色 - 無火災
+          0.1: 'darkred', // 深紅色 - 低強度火災
+          0.2: 'maroon', // 栗色 - 小火災
+          0.3: 'red', // 紅色 - 中等火災
+          0.4: 'orangered', // 橙紅色 - 中高火災
+          0.5: 'orange', // 橙色 - 高火災
+          0.6: 'gold', // 金色 - 高溫火災
+          0.7: 'yellow', // 黃色 - 極高溫火災
+          0.8: 'lightyellow', // 淺黃色 - 白熱火災
+          0.9: 'lightyellow', // 淺黃色 - 最高溫火災
+          0.95: 'lightyellow', // 淺黃色 - 極高溫火災
+          1.0: 'white', // 白色 - 極限火災
         },
       });
 
@@ -145,8 +153,8 @@
       };
 
       /**
-       * 🎨 設定底圖
-       * 不使用任何底圖，只顯示世界地圖邊界和熱力圖
+       * 🎨 設定底圖 - 黑色海洋風格
+       * 設定黑色海洋背景和世界地圖邊界
        */
       const setBasemap = () => {
         if (!mapInstance) return;
@@ -157,8 +165,13 @@
           currentTileLayer = null;
         }
 
-        // 不添加任何底圖，只使用世界地圖邊界作為背景
-        console.log('🗺️ 不使用底圖，只顯示世界地圖邊界和熱力圖');
+        // 設定地圖容器背景為 my-color-black（海洋區域）
+        const mapContainer = document.getElementById(mapContainerId.value);
+        if (mapContainer) {
+          mapContainer.style.backgroundColor = 'var(--my-color-black)';
+        }
+
+        console.log('🗺️ 設定黑色海洋背景和世界地圖邊界');
       };
 
       /**
@@ -185,11 +198,11 @@
           worldMapLayer = L.geoJSON(worldData, {
             pane: 'worldPane', // 使用最底層的 pane
             style: {
-              fillColor: '#ffffff',
+              fillColor: 'var(--my-color-gray-900)', // my-color-gray-900 填充
               weight: 1,
-              opacity: 1,
-              color: '#333333',
-              fillOpacity: 0.8,
+              opacity: 0.3, // 更淡的邊界透明度
+              color: 'var(--my-color-gray-600)', // my-color-gray-600 邊界
+              fillOpacity: 0.9, // 高透明度
             },
           });
 
@@ -636,5 +649,20 @@
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
     color: white !important;
     text-decoration: none;
+  }
+
+  /* 🌑 my-color-black 海洋背景 */
+  .leaflet-container {
+    background-color: var(--my-color-black) !important;
+  }
+
+  /* 🌑 地圖容器 my-color-black 背景 */
+  #map-container {
+    background-color: var(--my-color-black);
+  }
+
+  /* 🌑 my-color-black 海洋背景 */
+  .leaflet-tile-container {
+    background-color: var(--my-color-black) !important;
   }
 </style>
