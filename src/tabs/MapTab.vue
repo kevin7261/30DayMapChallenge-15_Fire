@@ -1,11 +1,11 @@
 <script>
   /**
-   * 🗺️ MapTab.vue - 簡化版地圖組件 (Simplified Map Component)
+   * 🗺️ MapTab.vue - 火災地圖組件 (Fire Map Component)
    *
-   * 這是一個簡化的地圖組件，專為世界城市地圖展示設計。
+   * 這是一個火災地圖組件，專為顯示火災地點數據設計。
    * 主要功能：
-   * - 顯示世界六大城市的 GeoJSON 數據
-   * - 提供城市導航功能
+   * - 顯示火災地點的 GeoJSON 數據
+   * - 支援自由縮放和拖拽
    * - 支援多種底圖切換
    * - 響應式設計
    *
@@ -16,7 +16,7 @@
    * - Bootstrap 5 樣式
    */
 
-  import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
+  import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
   import { useDataStore } from '@/stores/dataStore.js';
@@ -24,9 +24,6 @@
 
   export default {
     name: 'MapTab',
-    props: {
-      currentCountry: { type: String, default: '國家名稱' },
-    },
     emits: ['map-ready'],
     setup(props, { emit }) {
       // 📦 存儲實例
@@ -37,39 +34,11 @@
       const mapContainer = ref(null);
       let mapInstance = null;
       let currentTileLayer = null;
+      let savedMarkersLayer = null;
 
       // 🎛️ 地圖控制狀態
       const isMapReady = ref(false);
       const mapContainerId = ref(`leaflet-map-${Math.random().toString(36).substr(2, 9)}`);
-
-      // 📊 計算屬性：檢查是否有任何圖層可見（現在所有圖層都直接可見）
-      const isAnyLayerVisible = computed(() => dataStore.getAllLayers().length > 0);
-
-      // 🏙️ 當前國家信息
-      const currentCountryInfo = computed(() => {
-        if (!props.currentCountry) {
-          console.log('❌ currentCountryInfo: 沒有當前國家');
-          return null;
-        }
-
-        // 從dataStore中獲取國家信息
-        const allLayers = dataStore.getAllLayers();
-        console.log(
-          '🔍 查找國家:',
-          props.currentCountry,
-          '可用圖層:',
-          allLayers.map((l) => l.layerName)
-        );
-
-        const countryLayer = allLayers.find((layer) => layer.layerName === props.currentCountry);
-        if (countryLayer) {
-          console.log('✅ 找到國家圖層:', countryLayer.layerName);
-          return {};
-        } else {
-          console.log('❌ 未找到國家圖層:', props.currentCountry);
-          return null;
-        }
-      });
 
       /**
        * 🏗️ 創建地圖實例
@@ -88,21 +57,19 @@
           mapInstance = L.map(mapContainer.value, {
             center: defineStore.mapView.center,
             zoom: defineStore.mapView.zoom,
-            zoomControl: false,
-            attributionControl: false,
-            dragging: false, // 禁用拖拽
-            touchZoom: false, // 禁用觸控縮放
-            doubleClickZoom: false, // 禁用雙擊縮放
-            scrollWheelZoom: false, // 禁用滾輪縮放
-            boxZoom: false, // 禁用框選縮放
-            keyboard: false, // 禁用鍵盤控制
+            zoomControl: true, // 啟用縮放控制
+            attributionControl: true, // 啟用屬性控制
+            dragging: true, // 啟用拖拽
+            touchZoom: true, // 啟用觸控縮放
+            doubleClickZoom: true, // 啟用雙擊縮放
+            scrollWheelZoom: true, // 啟用滾輪縮放
+            boxZoom: true, // 啟用框選縮放
+            keyboard: true, // 啟用鍵盤控制
           });
 
           // 綁定地圖事件
           mapInstance.on('zoomend', handleZoomEnd);
           mapInstance.on('moveend', handleMoveEnd);
-
-          // 移除地圖點擊事件處理
 
           // 設定 popup 面板的 z-index
           mapInstance.getPane('popupPane').style.zIndex = 2200;
@@ -166,43 +133,79 @@
           });
           mapInstance.addLayer(currentTileLayer);
         }
-
-        // 使用預設的透明背景，不設定任何特殊背景色
       };
 
-      // 移除地圖標記功能，改為在 HTML 上顯示中心點
-
       /**
-       * 🎯 高亮顯示特定要素
-       * 當用戶點擊地圖要素時高亮顯示
+       * 📍 載入並顯示儲存的地點
        */
-      const highlightFeature = (feature) => {
-        // 重置所有圖層樣式
-        resetAllLayerStyles();
-
-        // 高亮選中的要素
-        if (feature && feature._leaflet_id) {
-          // 這裡可以添加高亮邏輯
-          console.log('高亮要素:', feature.properties.name);
+      const loadSavedLocations = async () => {
+        try {
+          console.log('📍 開始載入儲存的地點...');
+          await dataStore.loadSavedLocations();
+          console.log('📍 儲存的地點載入完成，數量:', dataStore.savedLocations.length);
+          displaySavedLocations();
+        } catch (error) {
+          console.error('❌ 載入儲存的地點失敗:', error);
         }
       };
 
       /**
-       * 🔄 重置所有圖層樣式
-       * 清除所有高亮效果
+       * 🗺️ 在地圖上顯示儲存的地點
        */
-      const resetAllLayerStyles = () => {
-        // 這裡可以添加重置樣式的邏輯
-        console.log('重置圖層樣式');
-      };
+      const displaySavedLocations = () => {
+        console.log(
+          '🗺️ 嘗試顯示儲存的地點，地圖實例:',
+          !!mapInstance,
+          '地點數量:',
+          dataStore.savedLocations.length
+        );
+        if (!mapInstance || !dataStore.savedLocations.length) {
+          console.log('❌ 無法顯示儲存的地點：地圖未準備好或沒有數據');
+          return;
+        }
 
-      /**
-       * 🔄 同步圖層（已移除標記功能）
-       * 不再在地圖上創建標記，改為在 HTML 上顯示
-       */
-      const syncLayers = () => {
-        // 移除地圖標記功能，不需要同步任何圖層
-        console.log('圖層同步已禁用，使用 HTML 中心點顯示');
+        // 移除現有的標記
+        if (savedMarkersLayer) {
+          mapInstance.removeLayer(savedMarkersLayer);
+        }
+
+        // 創建新的標記圖層
+        savedMarkersLayer = L.layerGroup();
+
+        // 為每個儲存的地點創建標記
+        dataStore.savedLocations.forEach((location) => {
+          const [lng, lat] = location.geometry.coordinates;
+          const properties = location.properties;
+
+          // 創建地點標記
+          const locationIcon = L.divIcon({
+            className: 'location-marker',
+            html: '<div class="location-marker-icon">📍</div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+
+          const marker = L.marker([lat, lng], { icon: locationIcon });
+
+          // 創建彈出窗口內容
+          const popupContent = `
+            <div class="location-popup">
+              <h6 class="mb-2">${properties.location?.name || '未知地點'}</h6>
+              <p class="mb-1"><strong>地址:</strong> ${properties.location?.address || '無地址資訊'}</p>
+              <p class="mb-1"><strong>國家:</strong> ${properties.location?.country_code || 'Unknown'}</p>
+              <p class="mb-1"><strong>日期:</strong> ${new Date(properties.date).toLocaleDateString()}</p>
+              ${properties.google_maps_url ? `<a href="${properties.google_maps_url}" target="_blank" class="btn btn-sm btn-primary">查看 Google 地圖</a>` : ''}
+            </div>
+          `;
+
+          marker.bindPopup(popupContent);
+          savedMarkersLayer.addLayer(marker);
+        });
+
+        // 將標記圖層添加到地圖
+        mapInstance.addLayer(savedMarkersLayer);
+
+        console.log(`📍 已在地圖上顯示 ${dataStore.savedLocations.length} 個儲存的地點`);
       };
 
       /**
@@ -237,7 +240,10 @@
           if (createMap()) {
             console.log('[MapTab] 地圖創建成功，開始初始化');
             setBasemap();
-            syncLayers();
+            // 延遲載入儲存的地點，確保地圖完全準備好
+            setTimeout(() => {
+              loadSavedLocations();
+            }, 500);
           } else {
             console.log('[MapTab] 地圖創建失敗，100ms 後重試');
             setTimeout(tryCreateMap, 100);
@@ -293,11 +299,12 @@
         }
 
         currentTileLayer = null;
+        savedMarkersLayer = null;
         isMapReady.value = false;
       });
 
-      // 👀 監聽器：監聽資料存儲中的圖層變化
-      watch(() => dataStore.layers, syncLayers, { deep: true });
+      // 👀 監聽器：監聽儲存的地點數據變化
+      watch(() => dataStore.savedLocations, displaySavedLocations, { deep: true });
 
       // 👀 監聽器：監聽底圖變化
       watch(
@@ -313,11 +320,9 @@
       return {
         mapContainer,
         mapContainerId,
-        isAnyLayerVisible,
-        currentCountryInfo,
-        highlightFeature,
         invalidateSize,
         defineStore,
+        dataStore,
       };
     },
   };
@@ -328,9 +333,63 @@
   <div id="map-container" class="h-100 w-100 position-relative bg-transparent z-0">
     <!-- 🗺️ Leaflet 地圖容器 -->
     <div :id="mapContainerId" ref="mapContainer" class="h-100 w-100"></div>
+
+    <!-- 📊 統計資訊面板 -->
+    <div class="position-absolute top-0 end-0 m-3">
+      <div class="card shadow-sm" style="min-width: 200px">
+        <div class="card-body p-3">
+          <h6 class="card-title mb-2">📍 儲存的地點統計</h6>
+          <div v-if="dataStore.loading" class="text-muted">
+            <small>載入中...</small>
+          </div>
+          <div v-else-if="dataStore.error" class="text-danger">
+            <small>載入失敗: {{ dataStore.error }}</small>
+          </div>
+          <div v-else>
+            <p class="mb-1"><strong>總數:</strong> {{ dataStore.getStatistics.total }}</p>
+            <p class="mb-1"><strong>國家數:</strong> {{ dataStore.getStatistics.countries }}</p>
+            <p class="mb-0">
+              <strong>國家:</strong> {{ dataStore.getStatistics.countryList.join(', ') }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style>
   @import '../assets/css/common.css';
+
+  /* 📍 地點標記樣式 */
+  .location-marker {
+    background: transparent;
+    border: none;
+  }
+
+  .location-marker-icon {
+    font-size: 16px;
+    text-align: center;
+    line-height: 20px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  }
+
+  /* 📍 彈出窗口樣式 */
+  .location-popup {
+    min-width: 200px;
+  }
+
+  .location-popup h6 {
+    color: #007bff;
+    font-weight: bold;
+  }
+
+  .location-popup p {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .location-popup .btn {
+    margin-top: 0.5rem;
+  }
 </style>
