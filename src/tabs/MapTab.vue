@@ -35,7 +35,6 @@
       // 🗺️ 地圖相關變數
       const mapContainer = ref(null);
       let mapInstance = null;
-      let currentTileLayer = null;
       let savedMarkersLayer = null;
       let worldMapLayer = null;
       let heatmapInstance = null;
@@ -88,7 +87,7 @@
         try {
           mapInstance = L.map(mapContainer.value, {
             center: defineStore.mapView.center,
-            zoom: defineStore.mapView.zoom,
+            zoom: defineStore.mapView.zoom - 1, // 縮小一級
             zoomControl: false, // 禁用縮放控制
             attributionControl: false, // 禁用屬性控制
             dragging: false, // 禁用拖拽
@@ -106,10 +105,6 @@
           mapInstance.scrollWheelZoom.disable();
           mapInstance.boxZoom.disable();
           mapInstance.keyboard.disable();
-
-          // 綁定地圖事件
-          mapInstance.on('zoomend', handleZoomEnd);
-          mapInstance.on('moveend', handleMoveEnd);
 
           // 創建自定義 pane 來控制圖層順序
           // 世界地圖 pane (最底層)
@@ -139,42 +134,11 @@
       };
 
       /**
-       * 📡 處理縮放結束事件
-       * 更新地圖視圖狀態到存儲中
-       */
-      const handleZoomEnd = () => {
-        if (mapInstance) {
-          const zoom = mapInstance.getZoom();
-          const center = mapInstance.getCenter();
-          defineStore.setMapView([center.lat, center.lng], zoom);
-          emit('update:zoomLevel', zoom);
-        }
-      };
-
-      /**
-       * 📡 處理移動結束事件
-       * 更新地圖中心座標
-       */
-      const handleMoveEnd = () => {
-        if (mapInstance) {
-          const center = mapInstance.getCenter();
-          defineStore.setMapView([center.lat, center.lng], mapInstance.getZoom());
-          emit('update:currentCoords', { lat: center.lat, lng: center.lng });
-        }
-      };
-
-      /**
        * 🎨 設定底圖 - 黑色海洋風格
        * 設定黑色海洋背景和世界地圖邊界
        */
       const setBasemap = () => {
         if (!mapInstance) return;
-
-        // 移除現有底圖
-        if (currentTileLayer) {
-          mapInstance.removeLayer(currentTileLayer);
-          currentTileLayer = null;
-        }
 
         // 設定地圖容器背景為 my-color-black（海洋區域）
         const mapContainer = document.getElementById(mapContainerId.value);
@@ -931,7 +895,6 @@
           mapInstance = null;
         }
 
-        currentTileLayer = null;
         savedMarkersLayer = null;
         worldMapLayer = null;
         heatmapInstance = null;
