@@ -46,10 +46,10 @@
 
       // 🔥 熱力圖配置 - 火焰風格（更明顯）
       const heatmapConfig = ref({
-        radius: 16, // 熱力圖半徑（像素）- 適中的半徑讓火焰更明顯
+        radius: 12, // 熱力圖半徑（像素）- 適中的半徑讓火焰更明顯
         maxZoom: 18,
         max: 1.0,
-        minOpacity: 0.5, // 完全不透明，讓火焰更明顯
+        minOpacity: 1, // 完全不透明，讓火焰更明顯
         blur: 8, // 減少模糊，讓邊緣更清晰明顯
         gradient: {
           0.0: 'black', // 黑色 - 無火災
