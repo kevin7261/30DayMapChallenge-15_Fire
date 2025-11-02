@@ -46,11 +46,11 @@
 
       // 🔥 熱力圖配置 - 火焰風格（更明顯）
       const heatmapConfig = ref({
-        radius: 12, // 熱力圖半徑（像素）- 適中的半徑讓火焰更明顯
+        radius: 16, // 熱力圖半徑（像素）- 適中的半徑讓火焰更明顯
         maxZoom: 18,
         max: 1.0,
         minOpacity: 1, // 完全不透明，讓火焰更明顯
-        blur: 8, // 減少模糊，讓邊緣更清晰明顯
+        blur: 16, // 減少模糊，讓邊緣更清晰明顯
         gradient: {
           0.0: 'black', // 黑色 - 無火災
           0.1: 'darkred', // 深紅色 - 低強度火災
@@ -118,9 +118,6 @@
           const markerPane = mapInstance.createPane('markerPane');
           markerPane.style.zIndex = 600; // 比 overlayPane 高
 
-          // 設定 popup 面板的 z-index
-          mapInstance.getPane('popupPane').style.zIndex = 2200;
-
           isMapReady.value = true;
           emit('map-ready', mapInstance);
 
@@ -139,7 +136,7 @@
       const setBasemap = () => {
         if (!mapInstance) return;
 
-        // 設定地圖容器背景為 my-color-black（海洋區域）
+        // 設定地圖容器背景為黑色（海洋區域）
         const mapContainer = document.getElementById(mapContainerId.value);
         if (mapContainer) {
           mapContainer.style.backgroundColor = 'var(--my-color-black)';
@@ -259,10 +256,8 @@
                 .enter()
                 .append('path')
                 .attr('fill', 'var(--my-color-gray-900)')
-                .attr('stroke', 'var(--my-color-gray-600)')
-                .attr('stroke-width', 1)
-                .attr('opacity', 0.3)
-                .attr('fill-opacity', 0.9);
+                .attr('stroke', 'var(--my-color-gray-800)')
+                .attr('stroke-width', 1);
 
               // 合併並更新所有元素
               enter.merge(countriesData).attr('d', path);
@@ -353,41 +348,10 @@
           const [lng, lat] = location.geometry.coordinates;
           const properties = location.properties;
 
-          // 創建彈出窗口內容
-          const popupContent = `
-            <div class="location-popup">
-              <div class="popup-header">
-                <h6 class="popup-title">${properties.location?.name || '未知地點'}</h6>
-              </div>
-              <div class="popup-content">
-                <div class="popup-item">
-                  <span class="popup-label">地址</span>
-                  <span class="popup-value">${properties.location?.address || '無地址資訊'}</span>
-                </div>
-                <div class="popup-item">
-                  <span class="popup-label">國家</span>
-                  <span class="popup-value">${properties.location?.country_code || 'Unknown'}</span>
-                </div>
-                <div class="popup-item">
-                  <span class="popup-label">日期</span>
-                  <span class="popup-value">${new Date(properties.date).toLocaleDateString()}</span>
-                </div>
-                ${
-                  properties.google_maps_url
-                    ? `
-                  <div class="popup-actions">
-                    <a href="${properties.google_maps_url}" target="_blank" class="popup-btn">
-                      查看 Google 地圖
-                    </a>
-                  </div>
-                `
-                    : ''
-                }
-              </div>
-            </div>
-          `;
+          // 創建 tooltip 文本內容
+          const tooltipText = properties.location?.name || '未知地點';
 
-          return { lng, lat, properties, popupContent };
+          return { lng, lat, properties, tooltipText };
         });
 
         // 創建自定義 D3 點位圖層類
@@ -396,7 +360,7 @@
             L.setOptions(this, options);
             this._data = data;
             this._projection = projection;
-            this._popups = {};
+            this._tooltips = {};
           },
 
           onAdd: function (map) {
@@ -438,10 +402,10 @@
             map.off('zoom', this._reset, this);
             map.off('resize', this._reset, this);
 
-            // 移除所有 popup
-            Object.values(this._popups).forEach((popup) => {
-              if (popup) {
-                map.removeLayer(popup);
+            // 移除所有 tooltip
+            Object.values(this._tooltips).forEach((tooltip) => {
+              if (tooltip) {
+                map.removeLayer(tooltip);
               }
             });
 
@@ -508,17 +472,21 @@
               const circle = d3.select(this);
               circle.attr('cx', x).attr('cy', y).style('display', null);
 
-              // 重新綁定點擊事件（因為 merge 後可能丟失）
-              circle.on('click', function (event) {
-                layerInstance._showPopup(event, d);
-              });
+              // 綁定鼠標懸停事件顯示 tooltip
+              circle
+                .on('mouseenter', function () {
+                  layerInstance._showTooltip(d);
+                })
+                .on('mouseleave', function () {
+                  layerInstance._hideTooltip(d);
+                });
             });
 
             // 移除不需要的元素
             pointsData.exit().remove();
           },
 
-          _showPopup: function (event, data) {
+          _showTooltip: function (data) {
             const map = this._map;
 
             // 使用投影獲取點位的屏幕座標
@@ -531,22 +499,32 @@
             const containerPoint = L.point(x, y);
             const latlng = map.containerPointToLatLng(containerPoint);
 
-            // 移除舊的 popup
-            const popupId = `${data.lng}_${data.lat}`;
-            if (this._popups[popupId]) {
-              map.removeLayer(this._popups[popupId]);
+            // 移除舊的 tooltip
+            const tooltipId = `${data.lng}_${data.lat}`;
+            if (this._tooltips[tooltipId]) {
+              map.removeLayer(this._tooltips[tooltipId]);
             }
 
-            // 創建新的 popup
-            const popup = L.popup({
-              closeButton: true,
-              autoPan: true,
+            // 創建新的 tooltip
+            const tooltip = L.tooltip({
+              permanent: false,
+              direction: 'top',
+              offset: [0, -10],
             })
               .setLatLng(latlng)
-              .setContent(data.popupContent)
-              .openOn(map);
+              .setContent(data.tooltipText)
+              .addTo(map);
 
-            this._popups[popupId] = popup;
+            this._tooltips[tooltipId] = tooltip;
+          },
+
+          _hideTooltip: function (data) {
+            const map = this._map;
+            const tooltipId = `${data.lng}_${data.lat}`;
+            if (this._tooltips[tooltipId]) {
+              map.removeLayer(this._tooltips[tooltipId]);
+              delete this._tooltips[tooltipId];
+            }
           },
         });
 
@@ -699,10 +677,8 @@
 
               // 創建徑向漸變（從中心到邊緣，從不透明到透明）
               const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-              // 使用更強的 alpha 計算，確保熱力圖更明顯
-              // 最小 alpha 設為 0.3，即使低強度也明顯
-              const baseAlpha = Math.max(0.3, point.intensity) * config.minOpacity;
-              const alpha = baseAlpha;
+              // 完全不透明的 alpha 計算
+              const alpha = config.minOpacity;
 
               // 轉換顏色為 RGBA 格式（支援 CSS 顏色名稱、十六進制等）
               const colorToRgba = (colorStr, alphaValue) => {
@@ -750,13 +726,13 @@
                 return `rgba(255, 0, 0, ${alphaValue})`;
               };
 
-              // 調整漸變，讓熱力圖更明顯
+              // 完全不透明的漸變
               // 中心完全不透明
               gradient.addColorStop(0, colorToRgba(color, alpha));
-              // 中間部分保持較高的透明度
-              gradient.addColorStop(0.4, colorToRgba(color, alpha * 0.7));
-              // 邊緣不完全透明，保持最低可見度
-              gradient.addColorStop(1, colorToRgba(color, alpha * 0.2));
+              // 中間完全不透明
+              gradient.addColorStop(0.4, colorToRgba(color, alpha));
+              // 邊緣完全不透明
+              gradient.addColorStop(1, colorToRgba(color, alpha));
 
               // 繪製圓形
               ctx.beginPath();
@@ -997,110 +973,17 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 
-  /* 📍 彈出窗口樣式 - 美化版本 */
-  .location-popup {
-    min-width: 280px;
-    max-width: 320px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    overflow: hidden;
-  }
-
-  .popup-header {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
-    color: white;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-  }
-
-  .popup-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin: 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    flex: 1;
-  }
-
-  .popup-content {
-    padding: 20px;
-    background: white;
-  }
-
-  .popup-item {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .popup-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-  }
-
-  .popup-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-
-  .popup-value {
-    font-size: 14px;
-    color: #333;
-    line-height: 1.4;
-    word-break: break-word;
-  }
-
-  .popup-actions {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #f0f0f0;
-  }
-
-  .popup-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white !important;
-    text-decoration: none;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-    border: none;
-    cursor: pointer;
-  }
-
-  .popup-btn:hover {
-    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-    color: white !important;
-    text-decoration: none;
-  }
-
-  /* 🌑 my-color-black 海洋背景 */
+  /* 🌑 黑色海洋背景 */
   .leaflet-container {
     background-color: var(--my-color-black) !important;
   }
 
-  /* 🌑 地圖容器 my-color-black 背景 */
+  /* 🌑 地圖容器黑色背景 */
   #map-container {
     background-color: var(--my-color-black);
   }
 
-  /* 🌑 my-color-black 海洋背景 */
+  /* 🌑 黑色海洋背景 */
   .leaflet-tile-container {
     background-color: var(--my-color-black) !important;
   }
