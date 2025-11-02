@@ -44,25 +44,26 @@
       // 🎛️ 顯示模式控制
       const displayMode = ref('heatmap'); // 'point' 或 'heatmap'
 
-      // 🔥 熱力圖配置 - 火焰風格（更明顯）
+      // 🔥 熱力圖配置 - 火焰風格（從黑到白）
       const heatmapConfig = ref({
-        radius: 16, // 熱力圖半徑（像素）- 適中的半徑讓火焰更明顯
+        radius: 25, // 熱力圖半徑（像素）- 增大半徑讓火焰更明顯
         maxZoom: 18,
         max: 1.0,
-        minOpacity: 1, // 完全不透明，讓火焰更明顯
-        blur: 16, // 減少模糊，讓邊緣更清晰明顯
+        minOpacity: 0.9, // 中心完全不透明，邊緣會逐漸變透明
+        blur: 12, // 適度模糊，讓火焰邊緣更自然
         gradient: {
-          0.0: 'black', // 黑色 - 無火災
-          0.1: 'darkred', // 深紅色 - 低強度火災
-          0.2: 'maroon', // 栗色 - 小火災
-          0.3: 'red', // 紅色 - 中等火災
-          0.4: 'orangered', // 橙紅色 - 中高火災
-          0.5: 'orange', // 橙色 - 高火災
-          0.6: 'gold', // 金色 - 高溫火災
-          0.7: 'yellow', // 黃色 - 極高溫火災
-          0.8: 'lightyellow', // 淺黃色 - 白熱火災
-          0.9: 'lightyellow', // 淺黃色 - 最高溫火災
-          1.0: 'white', // 白色 - 極限火災
+          0.0: '#000000', // 黑色 - 無火災/最低強度（火焰頂部/消散）
+          0.1: '#400000', // 深暗紅色 - 最低溫
+          0.2: '#800000', // 深紅色 - 低溫
+          0.3: '#B62203', // 紅色 - 中低溫
+          0.4: '#D73502', // 橙紅色 - 中低溫
+          0.5: '#FC6400', // 橙色 - 中溫
+          0.6: '#FF7500', // 亮橙色 - 中高溫
+          0.7: '#FFA500', // 橙黃色 - 高溫
+          0.8: '#FFD700', // 金黃色 - 高溫
+          0.9: '#FFFF00', // 亮黃色 - 極高溫
+          0.95: '#FFFFAA', // 淡黃色/接近白色 - 最高溫
+          1.0: '#FFFFFF', // 白色 - 最熱/最亮（火焰核心）
         },
       });
 
@@ -255,9 +256,7 @@
               const enter = countriesData
                 .enter()
                 .append('path')
-                .attr('fill', 'var(--my-color-gray-900)')
-                .attr('stroke', 'var(--my-color-gray-800)')
-                .attr('stroke-width', 1);
+                .attr('fill', 'var(--my-color-gray-900)');
 
               // 合併並更新所有元素
               enter.merge(countriesData).attr('d', path);
@@ -643,7 +642,36 @@
             // 清除畫布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 顏色轉換函數（根據強度值獲取漸變色）
+            // 顏色轉換函數（根據強度值獲取漸變色，支持平滑插值）
+            const hexToRgb = (hex) => {
+              const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return result
+                ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16),
+                  }
+                : null;
+            };
+
+            const rgbToHex = (r, g, b) => {
+              return (
+                '#' + [r, g, b].map((x) => Math.round(x).toString(16).padStart(2, '0')).join('')
+              );
+            };
+
+            const interpolateColor = (color1, color2, factor) => {
+              const rgb1 = hexToRgb(color1);
+              const rgb2 = hexToRgb(color2);
+              if (!rgb1 || !rgb2) return color1;
+
+              const r = rgb1.r + (rgb2.r - rgb1.r) * factor;
+              const g = rgb1.g + (rgb2.g - rgb1.g) * factor;
+              const b = rgb1.b + (rgb2.b - rgb1.b) * factor;
+
+              return rgbToHex(r, g, b);
+            };
+
             const getColor = (intensity) => {
               const stops = Object.keys(config.gradient)
                 .map((k) => ({ stop: parseFloat(k), color: config.gradient[k] }))
@@ -652,10 +680,12 @@
               if (intensity <= 0) return stops[0].color;
               if (intensity >= 1) return stops[stops.length - 1].color;
 
-              // 找到強度值所在的區間
+              // 找到強度值所在的區間並進行插值
               for (let i = 0; i < stops.length - 1; i++) {
                 if (intensity >= stops[i].stop && intensity <= stops[i + 1].stop) {
-                  return stops[i].color; // 簡化：使用較低顏色
+                  const range = stops[i + 1].stop - stops[i].stop;
+                  const factor = (intensity - stops[i].stop) / range;
+                  return interpolateColor(stops[i].color, stops[i + 1].color, factor);
                 }
               }
               return stops[0].color;
@@ -675,12 +705,10 @@
               // 獲取顏色
               const color = getColor(point.intensity);
 
-              // 創建徑向漸變（從中心到邊緣，從不透明到透明）
+              // 創建徑向漸變（從中心到邊緣，從不透明到透明）- 像真實火焰
               const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-              // 完全不透明的 alpha 計算
-              const alpha = config.minOpacity;
 
-              // 轉換顏色為 RGBA 格式（支援 CSS 顏色名稱、十六進制等）
+              // 轉換顏色為 RGBA 格式（支援十六進制）
               const colorToRgba = (colorStr, alphaValue) => {
                 // 如果已經是 rgba 格式，提取 RGB 並使用新的 alpha
                 if (colorStr.startsWith('rgba(')) {
@@ -698,26 +726,13 @@
                   }
                 }
 
-                // 使用臨時 canvas 來轉換 CSS 顏色名稱或十六進制到 RGB
-                // Canvas API 會自動將 CSS 顏色名稱轉換為 'rgb(r, g, b)' 格式
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.fillStyle = colorStr;
-                const computedColor = tempCtx.fillStyle;
-
-                // 從 fillStyle 中提取 RGB 值
-                // fillStyle 可能是 'rgb(r, g, b)' 或 '#rrggbb' 格式
-                if (computedColor.startsWith('#')) {
-                  const r = parseInt(computedColor.slice(1, 3), 16);
-                  const g = parseInt(computedColor.slice(3, 5), 16);
-                  const b = parseInt(computedColor.slice(5, 7), 16);
+                // 處理十六進制顏色
+                if (colorStr.startsWith('#')) {
+                  const r = parseInt(colorStr.slice(1, 3), 16);
+                  const g = parseInt(colorStr.slice(3, 5), 16);
+                  const b = parseInt(colorStr.slice(5, 7), 16);
                   if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
                     return `rgba(${r}, ${g}, ${b}, ${alphaValue})`;
-                  }
-                } else if (computedColor.startsWith('rgb')) {
-                  const match = computedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                  if (match && match.length === 4) {
-                    return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${alphaValue})`;
                   }
                 }
 
@@ -726,13 +741,17 @@
                 return `rgba(255, 0, 0, ${alphaValue})`;
               };
 
-              // 完全不透明的漸變
-              // 中心完全不透明
-              gradient.addColorStop(0, colorToRgba(color, alpha));
-              // 中間完全不透明
-              gradient.addColorStop(0.4, colorToRgba(color, alpha));
-              // 邊緣完全不透明
-              gradient.addColorStop(1, colorToRgba(color, alpha));
+              // 火焰風格的漸變：中心最亮完全不透明，邊緣逐漸透明
+              // 中心：完全不透明（最亮的火焰）
+              gradient.addColorStop(0, colorToRgba(color, config.minOpacity));
+              // 內圈：保持高透明度
+              gradient.addColorStop(0.3, colorToRgba(color, config.minOpacity * 0.9));
+              // 中圈：開始變透明
+              gradient.addColorStop(0.6, colorToRgba(color, config.minOpacity * 0.6));
+              // 外圈：較透明
+              gradient.addColorStop(0.85, colorToRgba(color, config.minOpacity * 0.3));
+              // 邊緣：完全透明（火焰邊緣消失）
+              gradient.addColorStop(1, colorToRgba(color, 0));
 
               // 繪製圓形
               ctx.beginPath();
